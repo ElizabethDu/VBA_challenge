@@ -1,0 +1,119 @@
+
+Sub AnalyzeStocks()
+    ' Declare variables
+    Dim r, c, OutputRow As Integer
+    Dim FirstRow As Boolean
+    Dim OpeningPrice As Double
+    Dim ClosingPrice As Double
+    Dim YearlyChange As Double
+    Dim PercentChange As Double
+    Dim TotalStockVolume As LongLong
+    Dim GreatestInc, GreatestDec As Double
+    Dim GreatestVol As LongLong
+    Dim GreatestIncTicker, GreatestDecTicker, GreatestVolTicker As String
+    Dim ws As Worksheet ' Declare the worksheet variable
+
+    ' Loop through each worksheet
+    For Each ws In Worksheets
+        ' Initialize values, runs only once per worksheet
+        OutputRow = 2 ' Starts output from the second row
+        FirstRow = True
+        GreatestInc = 0: GreatestIncTicker = ""
+        GreatestDec = 0: GreatestDecTicker = ""
+        GreatestVol = 0: GreatestVolTicker = ""
+        
+        ' Sets Headers and labels for columns I through Q
+        For c = 9 To 17
+            Select Case c
+                Case 9, 16
+                    ws.Cells(1, c).Value = "Ticker"
+                Case 10
+                    ws.Cells(1, c).Value = "Yearly Change"
+                Case 11
+                    ws.Cells(1, c).Value = "Percent Change"
+                Case 12
+                    ws.Cells(1, c).Value = "Total Stock Volume"
+                Case 15
+                    ws.Cells(2, c).Value = "Greatest % Increase"
+                    ws.Cells(3, c).Value = "Greatest % Decrease"
+                    ws.Cells(4, c).Value = "Greatest Total Volume"
+                Case 17
+                    ws.Cells(1, c).Value = "Volume"
+            End Select
+        Next c
+
+        ' Outputs data and checks for greatest values
+        For r = 2 To ws.Cells(Rows.Count, 1).End(xlUp).Row
+            If FirstRow = True Then
+                OpeningPrice = ws.Cells(r, "C").Value ' Pull opening price if on the first row of a ticker
+                FirstRow = False
+            End If
+            
+            TotalStockVolume = TotalStockVolume + ws.Cells(r, "G").Value ' Running total of stock volume for the current ticker
+
+            ' Check if it's the last row of the current ticker
+            If ws.Cells(r, "A").Value <> ws.Cells(r + 1, 1).Value Then
+                ClosingPrice = ws.Cells(r, "F").Value ' Set closing price
+                YearlyChange = ClosingPrice - OpeningPrice ' Calculate yearly change
+                If OpeningPrice <> 0 Then
+                    PercentChange = YearlyChange / OpeningPrice ' Calculate percentage change
+                Else
+                    PercentChange = 0
+                End If
+
+                ' Print ticker, yearly change, percent change, and total volume
+                ws.Cells(OutputRow, "I").Value = ws.Cells(r, "A").Value
+                ws.Cells(OutputRow, "J").Value = YearlyChange
+
+                ' Conditional formatting for Yearly Change (green for positive, red for negative)
+                If YearlyChange >= 0 Then
+                    ws.Cells(OutputRow, "J").Interior.ColorIndex = 4 ' Green
+                Else
+                    ws.Cells(OutputRow, "J").Interior.ColorIndex = 3 ' Red
+                End If
+
+                ' Print Percent Change and Total Stock Volume
+                ws.Cells(OutputRow, "K").Value = FormatPercent(PercentChange, 2, vbTrue, vbFalse, vbFalse)
+                ws.Cells(OutputRow, "L").Value = TotalStockVolume
+
+                ' Check for greatest percent increase, decrease, and volume
+                If PercentChange > GreatestInc Then
+                    GreatestInc = PercentChange
+                    GreatestIncTicker = ws.Cells(r, "A").Value
+                End If
+                
+                If PercentChange < GreatestDec Then
+                    GreatestDec = PercentChange
+                    GreatestDecTicker = ws.Cells(r, "A").Value
+                End If
+
+                If TotalStockVolume > GreatestVol Then
+                    GreatestVol = TotalStockVolume
+                    GreatestVolTicker = ws.Cells(r, "A").Value
+                End If
+
+                ' Initialize values for next ticker
+                OutputRow = OutputRow + 1
+                TotalStockVolume = 0
+                FirstRow = True
+                OpeningPrice = 0
+                ClosingPrice = 0
+                YearlyChange = 0
+            End If
+        Next r
+
+        ' End of worksheet summary output for greatest values
+        ws.Cells(2, 16).Value = GreatestIncTicker   ' Greatest % Increase ticker
+        ws.Cells(2, 17).Value = FormatPercent(GreatestInc, 2, vbTrue, vbFalse, vbFalse) ' Greatest % Increase value
+        ws.Cells(3, 16).Value = GreatestDecTicker   ' Greatest % Decrease ticker
+        ws.Cells(3, 17).Value = FormatPercent(GreatestDec, 2, vbTrue, vbFalse, vbFalse) ' Greatest % Decrease value
+        ws.Cells(4, 16).Value = GreatestVolTicker   ' Greatest Volume ticker
+        ws.Cells(4, 17).Value = GreatestVol         ' Greatest Volume value
+
+        ' Autofit the columns for better readability
+        ws.Range("I:R").Columns.AutoFit
+        ws.Range("J:J").NumberFormat = "0.00" ' Ensure Yearly Change has two decimal places
+    Next ws
+
+End Sub
+
